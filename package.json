@@ -1,12 +1,13 @@
 {
   "name": "bot-wa-gratis",
   "version": "1.0.0",
-  "description": "",
+  "description": "Bot WhatsApp Node.js",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "pino": "^9.0.0"
   }
 }
