@@ -1,9 +1,5 @@
 const { default: makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
 const pino = require('pino');
-const readline = require('readline');
-
-const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-const question = (text) => new Promise((resolve) => rl.question(text, resolve));
 
 async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState('auth_info');
@@ -13,13 +9,19 @@ async function startBot() {
         browser: ["Ubuntu", "Chrome", "20.0.04"]
     });
 
-    // Memicu Pairing Code menggunakan Nomor Telepon
+    // Nomor telepon Anda langsung dimasukkan di sini secara otomatis
     if (!sock.authState.creds.registered) {
-        console.log('\n==================================================');
-        const phoneNumber = await question('MASUKKAN NOMOR HP BOT ANDA (Contoh: 628123456789): ');
-        const code = await sock.requestPairingCode(phoneNumber.trim());
-        console.log(`\nKODE PAIRING WHATSAPP ANDA ADALAH: ${code}`);
-        console.log('==================================================\n');
+        setTimeout(async () => {
+            const phoneNumber = "6285182323201";
+            try {
+                const code = await sock.requestPairingCode(phoneNumber);
+                console.log('\n==================================================');
+                console.log(`KODE PAIRING WHATSAPP ANDA ADALAH: ${code}`);
+                console.log('==================================================\n');
+            } catch (err) {
+                console.log("Gagal meminta kode pairing: ", err);
+            }
+        }, 5000); // Menunggu 5 detik agar koneksi stabil
     }
 
     sock.ev.on('connection.update', (update) => {
@@ -36,7 +38,7 @@ async function startBot() {
         const text = msg.message.conversation || msg.message.extendedTextMessage?.text;
 
         if (text && text.toLowerCase() === 'halo') {
-            await sock.sendMessage(from, { text: 'Halo juga!.' });
+            await sock.sendMessage(from, { text: 'Halo juga! Ini balasan otomatis dari bot gratisan saya.' });
         }
     });
 }
