@@ -1,51 +1,65 @@
-const { default: makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys'); // Sesuaikan library WA-mu jika berbeda
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const pino = require('pino');
-const express = require('express');
+const readline = require('readline');
 
-// ==========================================
-// 1. MEMBUAT SERVER WEB MINI (AGAR RAILWAY TETAP AKTIF)
-// ==========================================
-const app = express();
-const port = process.env.PORT || 3000;
+const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+const question = (text) => new Promise((resolve) => rl.question(text, resolve));
 
-app.get('/', (req, res) => {
-  res.send('Bot WhatsApp Aktif & Sehat!');
-});
-
-app.listen(port, '0.0.0.0', () => {
-  console.log(`Web server sukses berjalan di port ${port}`);
-});
-
-// ==========================================
-// 2. FUNGSI UTAMA BOT WHATSAPP
-// ==========================================
 async function startBot() {
-  const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
-  const sock = makeWASocket({
-    auth: state,
-    logger: pino({ level: 'silent' }),
-    browser: ["Ubuntu", "Chrome", "20.0.0.4"]
-  });
+    // Menyimpan sesi login agar tidak perlu scan/pairing ulang jika panel restart
+    const { state, saveCreds } = await useMultiFileAuthState('session_bot');
 
-  // Logika meminta kode pairing jika belum terdaftar
-  if (!sock.authState.creds.registered) {
-    setTimeout(async () => {
-      const phoneNumber = "6285182323201"; // Nomor HP Bot kamu
-      try {
-        const code = await sock.requestPairingCode(phoneNumber);
-        console.log('\n====================================');
-        console.log(`KODE PAIRING WHATSAPP ANDA ADALAH: ${code}`);
-        console.log('====================================\n');
-      } catch (err) {
-        console.log("Gagal meminta kode pairing:", err);
-      }
-    }, 8000); // Menunggu 8 detik setelah server Express jalan
-  }
+    const sock = makeWASocket({
+        logger: pino({ level: 'silent' }),
+        auth: state,
+        printQRInTerminal: false // Kita matikan QR karena pakai Pairing Code
+    });
 
-  sock.ev.on('creds.update', saveCreds);
+    // LOGIKA UNTUK PAIRING CODE LEWAT TERMINAL PANEL
+    if (!sock.authState.creds.registered) {
+        setTimeout(async () => {
+            const phoneNumber = await question('Masukkan nomor WhatsApp kamu (contoh: 62812345678): ');
+            const code = await sock.requestPairingCode(phoneNumber.trim());
+            console.log(`\n👉 KODE TAUTAN ANDA: ${code}\n`);
+            console.log('Masukkan kode di atas ke WhatsApp iPhone Anda (Perangkat Tertaut > Tautkan dengan nomor telepon saja)');
+        }, 3000);
+    }
+
+    // MEMANTAU LOG KONEKSI
+    sock.ev.on('connection.update', (update) => {
+        const { connection, lastDisconnect } = update;
+        if (connection === 'close') {
+            const shouldReconnect = lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut;
+            console.log('Koneksi terputus, mencoba menghubungkan ulang...', shouldReconnect);
+            if (shouldReconnect) startBot();
+        } else if (connection === 'open') {
+            console.log('Selamat! Bot WhatsApp Anda telah ONLINE 24 Jam!');
+        }
+    });
+
+    // MENYIMPAN KREDENSIAL OTOMATIS
+    sock.ev.on('creds.update', saveCreds);
+
+    // LOGIKA AUTO-RESPONDER (MEMBALAS PESAN)
+    sock.ev.on('messages.upsert', async (chat) => {
+        try {
+            const m = chat.messages[0];
+            if (!m.message || m.key.fromMe) return; // Mengabaikan pesan dari bot sendiri
+
+            const from = m.key.remoteJid;
+            // Mendapatkan teks pesan baik dari chat pribadi atau grup
+            const body = m.message.conversation || m.message.extendedTextMessage?.text || '';
+
+            // FITUR RESPOND KATA KUNCI
+            if (body === '!ping') {
+                await sock.sendMessage(from, { text: 'Pong! 🏓 Bot kamu berhasil aktif dan merespon dengan cepat!' });
+            } else if (body === 'halo' || body === 'Halo') {
+                await sock.sendMessage(from, { text: 'Halo juga! Ada yang bisa bot bantu?' });
+            }
+        } catch (error) {
+            console.error('Error saat membaca pesan:', error);
+        }
+    });
 }
 
-// ==========================================
-// 3. MENJALANKAN BOT (PENTING: JANGAN DIHAPUS)
-// ==========================================
 startBot();
