@@ -1,13 +1,13 @@
 {
-  "name": "bot-wa-gratis",
+  "name": "bot-wa-simple",
   "version": "1.0.0",
-  "description": "Bot WhatsApp Node.js",
+  "description": "Bot WA Sederhana dengan Pairing Code",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "express": "^4.19.2",
+    "@whiskeysockets/baileys": "^6.6.0",
     "pino": "^9.0.0"
   }
 }
