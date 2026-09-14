@@ -1,5 +1,18 @@
 const { default: makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
 const pino = require('pino');
+const express = require('express');
+
+// Membuat server web mini agar Railway tidak mematikan container secara paksa
+const app = express();
+const port = process.env.PORT || 3000;
+
+app.get('/', (req, res) => {
+    res.send('Bot WhatsApp Aktif & Sehat!');
+});
+
+app.listen(port, '0.0.0.0', () => {
+    console.log(`Web server sukses berjalan di port ${port}`);
+});
 
 async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState('auth_info');
@@ -9,7 +22,6 @@ async function startBot() {
         browser: ["Ubuntu", "Chrome", "20.0.04"]
     });
 
-    // Nomor telepon Anda langsung dimasukkan di sini secara otomatis
     if (!sock.authState.creds.registered) {
         setTimeout(async () => {
             const phoneNumber = "6285182323201";
@@ -21,7 +33,7 @@ async function startBot() {
             } catch (err) {
                 console.log("Gagal meminta kode pairing: ", err);
             }
-        }, 5000); // Menunggu 5 detik agar koneksi stabil
+        }, 8000); // Menunggu 8 detik agar server siap
     }
 
     sock.ev.on('connection.update', (update) => {
