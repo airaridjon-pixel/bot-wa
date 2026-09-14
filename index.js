@@ -1,20 +1,29 @@
 const { default: makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
-const qrcode = require('qrcode-terminal');
 const pino = require('pino');
+const readline = require('readline');
+
+const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+const question = (text) => new Promise((resolve) => rl.question(text, resolve));
 
 async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState('auth_info');
     const sock = makeWASocket({
         auth: state,
-        logger: pino({ level: 'silent' })
+        logger: pino({ level: 'silent' }),
+        browser: ["Ubuntu", "Chrome", "20.0.04"]
     });
 
+    // Memicu Pairing Code menggunakan Nomor Telepon
+    if (!sock.authState.creds.registered) {
+        console.log('\n==================================================');
+        const phoneNumber = await question('MASUKKAN NOMOR HP BOT ANDA (Contoh: 628123456789): ');
+        const code = await sock.requestPairingCode(phoneNumber.trim());
+        console.log(`\nKODE PAIRING WHATSAPP ANDA ADALAH: ${code}`);
+        console.log('==================================================\n');
+    }
+
     sock.ev.on('connection.update', (update) => {
-        const { connection, qr } = update;
-        if (qr) {
-            console.log('=== KODE QR WHATSAPP ===');
-            qrcode.generate(qr, { small: true });
-        }
+        const { connection } = update;
         if (connection === 'open') console.log('Bot WhatsApp SUKSES terhubung!');
     });
 
@@ -27,7 +36,7 @@ async function startBot() {
         const text = msg.message.conversation || msg.message.extendedTextMessage?.text;
 
         if (text && text.toLowerCase() === 'halo') {
-            await sock.sendMessage(from, { text: 'Halo juga! Ini balasan otomatis dari bot gratisan saya.' });
+            await sock.sendMessage(from, { text: 'Halo juga!.' });
         }
     });
 }
